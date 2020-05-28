@@ -3,6 +3,7 @@
 #include <limits.h>
 #include <string.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/inotify.h>
 #include <X11/Xlib.h>
 #include "config.h"
@@ -19,6 +20,20 @@ char status[512];
 
 int bat_perc;
 char bat_status;
+
+void* _battery() {
+    FILE *fp;
+    char *path = malloc(strlen(BATTERY_NAME) + 35);
+    sprintf(path, "/sys/class/power_supply/%s/uevent", BATTERY_NAME);
+
+    for (;;) {
+        printf("tinker \n");
+        fp = fopen(path, "r");
+        //fscanf(fp, "%d", &perc);
+        fclose(fp);
+        sleep(BATTERY_REFRESH);
+    }
+}
 
 void battery() {
     int perc;
@@ -57,18 +72,25 @@ int main() {
     static const char *battery_ev = "/sys/class/power_supply/BAT0/uevent";
     static const char *network_ev = "/proc/net/wireless";
 
+    int battery_irq, battery_watch; 
+    int network_irq, network_watch;
 
-    int fd, wd;
     ssize_t refresh_ev = 1;
     char buf[BUF_LEN];
 
     int debug_count = 0;
 
-    fd = inotify_init();
-    if (fd == -1) { printf("inotify: couldn't init\n"); }
+    pthread_t _battery_t;
+    pthread_create(&_battery_t, NULL, _battery, (void *)&_battery_t);
 
-    wd = inotify_add_watch(fd, battery_ev, IN_ALL_EVENTS);
-    if (wd == -1) { printf("inotify: couldn't add watch\n"); }
+    battery_irq = inotify_init();
+    if (battery_irq == -1) { printf("inotify: couldn't init\n"); }
+
+    battery_watch = inotify_add_watch(battery_irq, battery_ev, IN_ALL_EVENTS);
+    network_watch = inotify_add_watch(network_irq, network_ev, IN_ALL_EVENTS);
+
+
+    //if (wd == -1) { printf("inotify: couldn't add watch\n"); }
 
     do {
         battery();
@@ -76,7 +98,7 @@ int main() {
         printf("[%d]:: %s\n", debug_count, status);
         debug_count++;
         set_status();
-        refresh_ev = read(fd, buf, BUF_LEN);
+        refresh_ev = read(battery_irq, buf, BUF_LEN);
     } while(refresh_ev);
 
     return 0;

@@ -6,9 +6,13 @@
     static const char DISCHARGING_SYMBOL = '-';
     static const char FULL_SYMBOL = '=';
 
-/* System settings */
-static const char BATTERY_NAME[] = "BAT0"; 
+    /* Network */
 
-static const int  SLEEP_SEC = 10;
+
+/* System settings */
+    
+    /* Battery */
+    static const char BATTERY_NAME[] = "BAT0"; 
+    static const int  BATTERY_REFRESH = 10;
 
 
